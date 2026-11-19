@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>TraceStep</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one working screen. Left: your loop + step controls. Right: dry run table + program output. Full-width check strip below. 8px spacing grid. */
+:root {
+  /* Colour */
+  --bg: #FFFFFF;
+  --surface: #F3F5F7;
+  --border: #C6CDD5;
+  --border-strong: #5B6573;
+  --text: #161A1F;
+  --text-2: #4B5563;
+  --accent: #1D4ED8;
+  --accent-hover: #1E3FA8;
+  --on-accent: #FFFFFF;
+  --accent-bg: #E8EFFE;
+  --success: #146C34;
+  --success-bg: #EAF6EE;
+  --error: #B42318;
+  --error-bg: #FDEDEC;
+  --warning: #8A4B08;
+  --warning-bg: #FDF3E3;
+  --disabled: #5F6672;
+  --disabled-bg: #F3F5F7;
+  /* Type */
+  --font-ui: "Atkinson Hyperlegible", Arial, Helvetica, sans-serif;
+  --font-code: "IBM Plex Mono", "Courier New", monospace;
+  --fs-heading: 20px;
+  --fs-sub: 16px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-code: 15px;
+  /* Spacing (8px grid) */
+  --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 32px;
+  --radius: 6px;
+  --radius-panel: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171C; --surface: #1D2228; --border: #3A424D; --border-strong: #8B95A3;
+    --text: #E8EBEF; --text-2: #B4BCC7; --accent: #8AB4FF; --accent-hover: #A9C7FF; --on-accent: #0B1220; --accent-bg: #1E2A44;
+    --success: #6EE7A0; --success-bg: #12301F; --error: #FF9C94; --error-bg: #3A1717; --warning: #FBC56B; --warning-bg: #3A2A0C;
+    --disabled: #8B95A3; --disabled-bg: #1D2228; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171C; --surface: #1D2228; --border: #3A424D; --border-strong: #8B95A3;
+  --text: #E8EBEF; --text-2: #B4BCC7; --accent: #8AB4FF; --accent-hover: #A9C7FF; --on-accent: #0B1220; --accent-bg: #1E2A44;
+  --success: #6EE7A0; --success-bg: #12301F; --error: #FF9C94; --error-bg: #3A1717; --warning: #FBC56B; --warning-bg: #3A2A0C;
+  --disabled: #8B95A3; --disabled-bg: #1D2228; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: var(--fs-body); line-height: 1.5; }
+.page { max-width: 1200px; margin: 0 auto; padding-block: var(--s4) var(--s5); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: var(--s4); }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-size: var(--fs-heading); font-weight: 700; }
+h2 { font-size: var(--fs-sub); font-weight: 700; }
+h3 { font-size: var(--fs-small); font-weight: 700; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-code); font-size: var(--fs-code); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: var(--fs-small); color: var(--text-2); }
+
+/* Top bar */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); padding-bottom: var(--s3); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: baseline; gap: var(--s2) var(--s3); flex-wrap: wrap; }
+.tagline { font-size: var(--fs-small); color: var(--text-2); }
+.top-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.btn[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--text); }
+
+/* Buttons */
+.btn { font-family: inherit; font-size: var(--fs-body); line-height: 1; min-height: 44px; padding: 0 var(--s3); border-radius: var(--radius); border: 1.5px solid var(--border-strong); background: var(--bg); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); white-space: nowrap; }
+.btn:hover { background: var(--surface); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; padding: 0 var(--s4); min-height: 48px; }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-sm { min-height: 36px; font-size: var(--fs-small); padding: 0 12px; border-width: 1px; }
+.btn-link { border-color: transparent; background: transparent; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; padding: 0 var(--s2); }
+.btn-link:hover { background: var(--accent-bg); }
+.btn[aria-disabled="true"] { background: var(--disabled-bg); border-color: var(--border); border-style: dashed; color: var(--disabled); cursor: not-allowed; transform: none; }
+.btn-link[aria-disabled="true"] { background: transparent; border-color: transparent; text-decoration: none; }
+.btn[aria-busy="true"] { cursor: progress; }
+
+/* Workspace */
+.workspace { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s4); align-items: start; }
+@media (max-width: 880px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+.panel { border: 1px solid var(--border); border-radius: var(--radius-panel); padding: var(--s3); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+.step-chip { display: inline-block; margin-left: var(--s2); padding: 2px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: var(--fs-small); font-weight: 400; color: var(--text-2); vertical-align: 2px; }
+.row-btns { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.view { display: flex; flex-direction: column; gap: 12px; }
+.label { font-weight: 700; }
+
+/* Editor */
+.editor { display: flex; border: 1.5px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.editor:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.editor.invalid { border: 2px solid var(--error); }
+.gutter { flex: none; width: 40px; padding: 12px 0; text-align: right; font-family: var(--font-code); font-size: var(--fs-code); line-height: 26px; color: var(--text-2); background: var(--bg); border-right: 1px solid var(--border); overflow: hidden; user-select: none; }
+.gutter div { padding-right: 8px; }
+.gutter .err { background: var(--error-bg); color: var(--error); font-weight: 600; }
+textarea { flex: 1; min-width: 0; min-height: 210px; border: 0; outline: none; resize: vertical; padding: 12px; font-family: var(--font-code); font-size: var(--fs-code); line-height: 26px; color: var(--text); background: var(--surface); white-space: pre; overflow-wrap: normal; overflow-x: auto; tab-size: 4; }
+
+/* Code view while tracing */
+.code-view { list-style: none; margin: 0; padding: var(--s2) 0; border: 1.5px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); overflow-x: auto; }
+.code-view li { display: flex; align-items: center; min-height: 30px; font-family: var(--font-code); font-size: var(--fs-code); white-space: pre; padding-right: var(--s3); }
+.code-view .mark { flex: none; width: 28px; text-align: center; color: var(--accent); font-weight: 700; }
+.code-view .ln { flex: none; width: 32px; color: var(--text-2); }
+.code-view li.cur { background: var(--accent-bg); font-weight: 600; box-shadow: inset 0 0 0 2px var(--accent); }
+.code-view li.cur .ln { color: var(--text); }
+.code-view li.cur.bad { background: var(--error-bg); box-shadow: inset 0 0 0 2px var(--error); }
+.code-view li.cur.bad .mark { color: var(--error); }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: var(--s1); }
+
+/* Alerts */
+.alert { display: flex; gap: 12px; align-items: flex-start; border: 2px solid; border-radius: var(--radius); padding: 12px var(--s3); font-size: var(--fs-body); }
+.alert-icon { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--fs-small); color: var(--bg); }
+.alert-error { background: var(--error-bg); border-color: var(--error); }
+.alert-error .alert-icon { background: var(--error); }
+.alert-warning { background: var(--warning-bg); border-color: var(--warning); }
+.alert-warning .alert-icon { background: var(--warning); }
+.alert-success { background: var(--success-bg); border-color: var(--success); }
+.alert-success .alert-icon { background: var(--success); }
+.alert b.tone-error { color: var(--error); }
+.alert b.tone-warning { color: var(--warning); }
+.alert b.tone-success { color: var(--success); }
+.alert ul { margin: var(--s1) 0 0; padding-left: 20px; }
+.alert-body { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+
+/* Table */
+.note { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px var(--s3); font-size: var(--fs-small); background: var(--surface); }
+.note dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s1) 12px; }
+.note dt { font-weight: 700; }
+.note dd { margin: 0; }
+.empty { min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2); border: 1.5px dashed var(--border); border-radius: var(--radius); padding: var(--s4); text-align: center; }
+.empty span { font-size: var(--fs-small); color: var(--text-2); }
+.table-box { max-height: clamp(160px, calc(100vh - 446px), 400px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+th { position: sticky; top: 0; z-index: 1; background: var(--bg); text-align: left; padding: var(--s2) 12px; border-bottom: 2px solid var(--border-strong); white-space: nowrap; }
+td { padding: 6px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td code { font-size: var(--fs-small); }
+tr.cur td { background: var(--accent-bg); font-weight: 700; }
+tr.cur td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+.res { display: inline-flex; align-items: center; gap: var(--s1); font-weight: 700; }
+.res-true { color: var(--success); }
+.res-false { color: var(--error); }
+.res-end { color: var(--success); }
+.res-stop { color: var(--error); }
+.nl { color: var(--text-2); }
+
+.output-wrap { display: flex; flex-direction: column; gap: var(--s1); }
+.output { margin: 0; min-height: 56px; max-height: 160px; overflow: auto; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-family: var(--font-code); font-size: var(--fs-code); line-height: 1.4; white-space: pre-wrap; }
+.output.empty-out { color: var(--text-2); font-family: var(--font-ui); font-size: var(--fs-small); }
+
+/* Check strip */
+.strip { grid-column: 1 / -1; border: 2px solid var(--border-strong); border-radius: var(--radius-panel); padding: 12px var(--s4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); min-height: 64px; }
+.strip.idle { border: 1.5px dashed var(--border); color: var(--text-2); }
+.strip.plain { border: none; padding: 0; }
+.strip-label { font-size: var(--fs-small); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
+.strip-body { flex: 1 1 360px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); }
+.expr { font-family: var(--font-code); font-size: 18px; white-space: pre-wrap; }
+.why { color: var(--text-2); }
+.strip-alert { grid-column: 1 / -1; }
+.strip-alert:empty { display: none; }
+
+/* Help */
+.help { border: 1px solid var(--border); border-radius: var(--radius-panel); padding: var(--s3) var(--s4); background: var(--surface); display: flex; flex-direction: column; gap: 12px; }
+.help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s3) var(--s5); }
+.help ol, .help ul { margin: var(--s1) 0 0; padding-left: 22px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="topbar">
+    <div class="brand">
+      <h1>TraceStep</h1>
+      <span class="tagline">Dry-run a C++ loop one check at a time</span>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="theme-btn" class="btn btn-sm" aria-pressed="false">Dark mode</button>
+      <button type="button" id="help-btn" class="btn btn-sm" aria-expanded="false" aria-controls="help-panel">Help</button>
+    </div>
+  </header>
+
+  <section id="help-panel" class="help" aria-labelledby="help-h" hidden>
+    <h2 id="help-h">How to use TraceStep</h2>
+    <div class="help-grid">
+      <div>
+        <ol>
+          <li>Paste one C++ loop into the code box, or press Load example loop.</li>
+          <li>Press Next to run the next loop check.</li>
+          <li>Read the dry run table and the check strip to see where the loop goes wrong.</li>
+          <li>Press Edit code to fix it, then trace again to check the fix.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Keyboard shortcuts</h3>
+        <ul>
+          <li>Right arrow: Next</li>
+          <li>Left arrow: Back</li>
+          <li>R: Reset</li>
+        </ul>
+        <p class="hint">Shortcuts work when the code box isn't focused. Tab and Shift+Tab move between controls.</p>
+      </div>
+      <div>
+        <h3>Code TraceStep can run</h3>
+        <p>int variables, for and while loops, if and else, break and continue, + − * / %, comparisons, &amp;&amp; and ||, and cout. A full program with #include and int main() works too.</p>
+        <p class="hint">Not yet: cin, arrays, functions, strings, decimals.</p>
+      </div>
+    </div>
+    <div><button type="button" id="help-close" class="btn btn-sm">Close help</button></div>
+  </section>
+
+  <main class="workspace">
+    <section class="panel" aria-labelledby="loop-h">
+      <div class="panel-head"><h2 id="loop-h">Your loop</h2></div>
+
+      <div id="edit-view" class="view">
+        <label class="label" for="code">Paste one C++ loop</label>
+        <div id="code-error" role="alert"></div>
+        <div class="editor" id="editor">
+          <div class="gutter" id="gutter" aria-hidden="true"></div>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="code-hint"></textarea>
+        </div>
+        <p id="code-hint" class="hint">Works with int variables, for and while loops, if/else, + − * / %, comparisons and cout.</p>
+        <div><button type="button" id="load-example" class="btn btn-sm">Load example loop</button></div>
+      </div>
+
+      <div id="trace-view" class="view" hidden>
+        <ol id="code-view" class="code-view" aria-label="Your loop, read only"></ol>
+        <div><button type="button" id="edit-code" class="btn btn-link">Edit code</button></div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Step controls">
+        <button type="button" id="back" class="btn">◀ Back</button>
+        <button type="button" id="next" class="btn btn-primary">Next ▶</button>
+        <button type="button" id="run-end" class="btn">Run to end ▶▶</button>
+        <button type="button" id="run-more" class="btn" hidden>Run 100 more steps</button>
+        <button type="button" id="reset" class="btn btn-link">Reset</button>
+      </div>
+      <p class="hint">Keys: → Next, ← Back, R Reset</p>
+    </section>
+
+    <section class="panel" aria-labelledby="table-h">
+      <div class="panel-head">
+        <h2 id="table-h">Dry run table <span class="step-chip" id="step-label">No steps yet</span></h2>
+        <div class="row-btns">
+          <button type="button" id="cols-btn" class="btn btn-sm" aria-expanded="false" aria-controls="cols-panel">What the columns mean</button>
+          <button type="button" id="copy-btn" class="btn btn-sm">Copy table</button>
+        </div>
+      </div>
+      <div id="cols-panel" class="note" hidden>
+        <dl>
+          <dt>Step</dt><dd>The order of the loop checks, starting at 1.</dd>
+          <dt>Line</dt><dd>The line of the loop being checked.</dd>
+          <dt>Check</dt><dd>The loop's condition, with the real values in brackets.</dd>
+          <dt>Result</dt><dd>TRUE ✓ means the loop runs its body again. FALSE ✕ means it stops.</dd>
+          <dt>Variables</dt><dd>One column per variable, showing its value at the moment of the check. ? means it has no value yet.</dd>
+          <dt>Then printed</dt><dd>What cout prints after this check, before the next one. ⏎ is a new line.</dd>
+        </dl>
+      </div>
+      <p class="hint">One row per loop check. Earlier rows stay visible.</p>
+      <div id="empty" class="empty">
+        <strong>No steps yet</strong>
+        <span>Press Next ▶ to run the first check of your loop.</span>
+      </div>
+      <div id="table-box" class="table-box" role="region" aria-label="Dry run table rows" tabindex="0" hidden>
+        <table>
+          <caption class="sr-only">Dry run table: one row per loop check</caption>
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="output-wrap">
+        <h3 id="out-h">Program output</h3>
+        <pre id="output" class="output empty-out" tabindex="0" aria-labelledby="out-h">Nothing printed yet.</pre>
+      </div>
+    </section>
+
+    <section id="strip" class="strip idle" aria-label="Current check">
+      <span id="strip-label" class="strip-label">Check</span>
+      <div id="strip-body" class="strip-body">Press Next ▶ to run the first check of your loop.</div>
+    </section>
+    <div id="strip-alert" class="strip-alert" role="alert"></div>
+  </main>
+
+  <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+document.documentElement.lang = 'en';
+
+/* ===================== Interpreter for TraceStep's C++ subset ===================== */
+var TS = (function () {
+  function TraceError(line, msg, kind) { this.line = line; this.message = msg; this.kind = kind || 'code'; }
+  var BREAK = { sig: 'break' }, CONTINUE = { sig: 'continue' }, RETURN = { sig: 'return' };
+  var PREC = { '||': 1, '&&': 2, '==': 3, '!=': 3, '<': 4, '<=': 4, '>': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6 };
+  var OPS = ['<<=', '>>=', '<<', '>>', '<=', '>=', '==', '!=', '&&', '||', '++', '--', '+=', '-=', '*=', '/=', '%=', '+', '-', '*', '/', '%', '<', '>', '=', '!', '(', ')', '{', '}', ';', ',', '[', ']', '.', ':', '?', '&', '|', '^', '~'];
+  var OTHER_TYPES = ['double', 'float', 'string', 'char', 'bool', 'long', 'short', 'unsigned', 'auto', 'const', 'vector'];
+
+  function tokenize(src) {
+    src = src.replace(/\bstd::/g, '');
+    var toks = [], i = 0, line = 1, n = src.length, lineStart = true;
+    while (i < n) {
+      var c = src[i];
+      if (c === '\n') { line++; i++; lineStart = true; continue; }
+      if (/\s/.test(c)) { i++; continue; }
+      if (c === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
+      if (c === '/' && src[i + 1] === '*') { i += 2; while (i < n && !(src[i] === '*' && src[i + 1] === '/')) { if (src[i] === '\n') line++; i++; } i += 2; continue; }
+      if (c === '#' && lineStart) { while (i < n && src[i] !== '\n') i++; continue; }
+      lineStart = false;
+      if (/[0-9]/.test(c)) {
+        var j = i; while (j < n && /[0-9]/.test(src[j])) j++;
+        if (src[j] === '.') throw new TraceError(line, 'Line ' + line + ' uses a decimal number. TraceStep only traces whole numbers (int) for now.');
+        toks.push({ t: 'num', v: Number(src.slice(i, j)), line: line }); i = j; continue;
+      }
+      if (/[A-Za-z_]/.test(c)) {
+        var k = i; while (k < n && /[A-Za-z0-9_]/.test(src[k])) k++;
+        toks.push({ t: 'id', v: src.slice(i, k), line: line }); i = k; continue;
+      }
+      if (c === '"' || c === "'") {
+        var q = c, m = i + 1, s = '';
+        while (m < n && src[m] !== q && src[m] !== '\n') {
+          if (src[m] === '\\' && m + 1 < n) { var e = src[m + 1]; s += e === 'n' ? '\n' : e === 't' ? '\t' : e; m += 2; }
+          else { s += src[m]; m++; }
+        }
+        if (src[m] !== q) throw new TraceError(line, 'Line ' + line + ' has text in quotes that never closes. Add the missing ' + q + ' at the end of the text.');
+        toks.push({ t: 'str', v: s, line: line }); i = m + 1; continue;
+      }
+      var op = null;
+      for (var o = 0; o < OPS.length; o++) { if (src.startsWith(OPS[o], i)) { op = OPS[o]; break; } }
+      if (op) { toks.push({ t: 'op', v: op, line: line }); i += op.length; continue; }
+      throw new TraceError(line, 'Line ' + line + ' has a character TraceStep doesn’t recognise: ' + c);
+    }
+    toks.push({ t: 'eof', v: '', line: line });
+    return toks;
+  }
+
+  function parse(toks) {
+    var p = 0, loopId = 0, depth = 0, loops = [];
+    function peek(k) { return toks[p + (k || 0)]; }
+    function is(v, k) { var t = toks[p + (k || 0)]; return t && (t.t === 'op' || t.t === 'id') && t.v === v; }
+    function next() { return toks[p++]; }
+    function prevLine() { return p > 0 ? toks[p - 1].line : peek().line; }
+    function semi() { if (is(';')) { next(); return; } var L = prevLine(); throw new TraceError(L, 'Line ' + L + ' is missing a ; at the end.'); }
+    function expect(v, msg) { if (is(v)) return next(); throw new TraceError(peek().line, msg); }
+    function found(t) { return t.t === 'eof' ? 'the end of the code' : '“' + t.v + '”'; }
+
+    function program() {
+      var body = [];
+      while (peek().t !== 'eof') {
+        if (is('using')) { while (!is(';') && peek().t !== 'eof') next(); semi(); continue; }
+        if (is('int') && is('main', 1)) {
+          next(); next(); expect('(', 'Line ' + peek().line + ': expected ( after main.');
+          if (is('void')) next();
+          expect(')', 'Line ' + peek().line + ': expected ) after main(.');
+          var b = block(); body = body.concat(b.body); continue;
+        }
+        body.push(statement());
+      }
+      return { type: 'block', body: body };
+    }
+
+    function block() {
+      var line = next().line, body = [];
+      while (!is('}')) {
+        if (peek().t === 'eof') throw new TraceError(line, 'The { on line ' + line + ' is never closed. Add a } at the end of the block.');
+        body.push(statement());
+      }
+      next();
+      return { type: 'block', body: body, line: line };
+    }
+
+    function statement() {
+      var t = peek(), line = t.line;
+      if (is('{')) return block();
+      if (is(';')) { next(); return { type: 'empty', line: line }; }
+      if (t.t === 'id') {
+        switch (t.v) {
+          case 'int': { var d = decl(); semi(); return d; }
+          case 'for': return forStmt();
+          case 'while': return whileStmt();
+          case 'if': return ifStmt();
+          case 'cout': return coutStmt();
+          case 'cin': {
+            var name = (is('>>', 1) && toks[p + 2] && toks[p + 2].t === 'id') ? toks[p + 2].v : 'n';
+            throw new TraceError(line, 'Line ' + line + ' can’t be traced. TraceStep can’t read input (cin) yet. Give ' + name + ' a fixed value instead, for example <code>int ' + name + ' = 3;</code> then press Next.', 'cin');
+          }
+          case 'do': throw new TraceError(line, 'Line ' + line + ' uses a do…while loop. TraceStep can’t trace those yet. Rewrite it as a while loop.');
+          case 'switch': throw new TraceError(line, 'Line ' + line + ' uses switch. TraceStep can’t trace switch yet. Use if and else instead.');
+          case 'else': throw new TraceError(line, 'Line ' + line + ' has an else without an if before it.');
+          case 'break': next(); semi(); return { type: 'break', line: line };
+          case 'continue': next(); semi(); return { type: 'continue', line: line };
+          case 'return': next(); if (!is(';')) expr(); semi(); return { type: 'return', line: line };
+          case 'endl': throw new TraceError(line, 'Line ' + line + ' has endl on its own. Write it as <code>cout &lt;&lt; endl;</code>');
+        }
+        if (OTHER_TYPES.indexOf(t.v) >= 0) throw new TraceError(line, 'Line ' + line + ' uses a ' + t.v + ' variable. TraceStep only traces int variables for now. If the values are whole numbers, change ' + t.v + ' to int.');
+        if (is('(', 1)) throw new TraceError(line, 'Line ' + line + ' calls a function (' + t.v + '). TraceStep can’t trace functions yet. Write the loop directly instead.');
+      }
+      var s = simple(); semi(); return s;
+    }
+
+    function decl() {
+      var line = next().line, items = [];
+      while (true) {
+        var id = next();
+        if (id.t !== 'id') throw new TraceError(line, 'Line ' + line + ': expected a variable name after int.');
+        if (is('[')) throw new TraceError(line, 'Line ' + line + ' uses an array (' + id.v + '[ ]). TraceStep can’t trace arrays yet.');
+        if (is('(')) throw new TraceError(line, 'Line ' + line + ' defines a function (' + id.v + '). TraceStep can’t trace functions yet.');
+        var init = null;
+        if (is('=')) { next(); init = expr(); }
+        items.push({ name: id.v, init: init });
+        if (is(',')) { next(); continue; }
+        break;
+      }
+      return { type: 'decl', items: items, line: line };
+    }
+
+    function simple() {
+      var t = peek(), line = t.line;
+      if (is('++') || is('--')) {
+        var op1 = next().v, id1 = next();
+        if (id1.t !== 'id') throw new TraceError(line, 'Line ' + line + ': expected a variable name after ' + op1 + '.');
+        return { type: 'incdec', name: id1.v, op: op1, line: line };
+      }
+      if (t.t === 'id') {
+        var name = next().v;
+        if (is('[')) throw new TraceError(line, 'Line ' + line + ' uses an array (' + name + '[ ]). TraceStep can’t trace arrays yet.');
+        if (is('++') || is('--')) return { type: 'incdec', name: name, op: next().v, line: line };
+        var nt = peek();
+        if (nt.t === 'op' && ['=', '+=', '-=', '*=', '/=', '%='].indexOf(nt.v) >= 0) { var op = next().v; return { type: 'assign', name: name, op: op, e: expr(), line: line }; }
+        throw new TraceError(line, 'Line ' + line + ': TraceStep couldn’t understand ' + name + ' followed by ' + found(nt) + '. Expected something like <code>' + name + ' = 0;</code> or <code>' + name + '++;</code>');
+      }
+      throw new TraceError(line, 'Line ' + line + ': TraceStep didn’t expect ' + found(t) + ' here.');
+    }
+
+    function forStmt() {
+      var line = next().line, help = 'Line ' + line + ': a for loop needs this shape: <code>for (int i = 0; i &lt; 3; i++)</code>';
+      expect('(', help);
+      var init = null; if (!is(';')) init = is('int') ? decl() : simple(); expect(';', help);
+      var cond = null; if (!is(';')) cond = expr(); expect(';', help);
+      var update = null; if (!is(')')) update = simple(); expect(')', help);
+      var info = { id: loopId++, line: line, cond: cond ? show(cond) : '(no check)', nested: depth > 0 };
+      loops.push(info);
+      depth++; var body = statement(); depth--;
+      return { type: 'for', init: init, cond: cond, update: update, body: body, line: line, info: info };
+    }
+
+    function whileStmt() {
+      var line = next().line, help = 'Line ' + line + ': a while loop needs this shape: <code>while (i &lt; 3)</code>';
+      expect('(', help); var cond = expr(); expect(')', help);
+      var info = { id: loopId++, line: line, cond: show(cond), nested: depth > 0 };
+      loops.push(info);
+      depth++; var body = statement(); depth--;
+      return { type: 'while', cond: cond, body: body, line: line, info: info };
+    }
+
+    function ifStmt() {
+      var line = next().line, help = 'Line ' + line + ': an if needs this shape: <code>if (i &gt; 0)</code>';
+      expect('(', help); var cond = expr(); expect(')', help);
+      var then = statement(), els = null;
+      if (is('else')) { next(); els = statement(); }
+      return { type: 'if', cond: cond, then: then, els: els, line: line };
+    }
+
+    function coutStmt() {
+      var line = next().line, items = [];
+      if (!is('<<')) throw new TraceError(line, 'Line ' + line + ': cout needs &lt;&lt; before what it prints, like <code>cout &lt;&lt; i;</code>');
+      while (is('<<')) {
+        next();
+        if (is('endl')) { next(); items.push({ k: 'str', v: '\n' }); }
+        else if (peek().t === 'str') items.push({ k: 'str', v: next().v });
+        else items.push({ k: 'expr', e: expr() });
+      }
+      semi();
+      return { type: 'cout', items: items, line: line };
+    }
+
+    function expr() { return binary(1); }
+    function binary(minPrec) {
+      var left = unary();
+      while (true) {
+        var t = peek();
+        if (t.t !== 'op' || !PREC[t.v] || PREC[t.v] < minPrec) break;
+        var op = next().v, pr = PREC[op];
+        var right = binary(pr + 1);
+        left = { k: 'bin', op: op, l: left, r: right, line: t.line };
+      }
+      return left;
+    }
+    function unary() {
+      if (is('-') || is('!') || is('+')) { var t = next(); return { k: 'un', op: t.v, a: unary(), line: t.line }; }
+      if (is('++') || is('--')) { var L = peek().line; throw new TraceError(L, 'Line ' + L + ' changes a variable inside a check or calculation (' + peek().v + '). Put it on its own line, like <code>i++;</code>'); }
+      return primary();
+    }
+    function primary() {
+      var t = next();
+      if (t.t === 'num') return { k: 'num', v: t.v };
+      if (t.t === 'id') {
+        if (t.v === 'true') return { k: 'num', v: 1 };
+        if (t.v === 'false') return { k: 'num', v: 0 };
+        if (t.v === 'cin') throw new TraceError(t.line, 'Line ' + t.line + ' can’t be traced. TraceStep can’t read input (cin) yet. Give the variable a fixed value instead, for example <code>int n = 3;</code> then press Next.', 'cin');
+        if (is('(')) throw new TraceError(t.line, 'Line ' + t.line + ' calls a function (' + t.v + '). TraceStep can’t trace functions yet.');
+        if (is('[')) throw new TraceError(t.line, 'Line ' + t.line + ' uses an array (' + t.v + '[ ]). TraceStep can’t trace arrays yet.');
+        if (is('++') || is('--')) throw new TraceError(t.line, 'Line ' + t.line + ' changes ' + t.v + ' inside a check or calculation (' + t.v + peek().v + '). Put it on its own line, like <code>' + t.v + '++;</code>');
+        return { k: 'var', name: t.v, line: t.line };
+      }
+      if (t.t === 'op' && t.v === '(') { var e = expr(); expect(')', 'Line ' + t.line + ': a ( is never closed. Add the missing ).'); return e; }
+      if (t.t === 'str') throw new TraceError(t.line, 'Line ' + t.line + ' uses text in a calculation. TraceStep only works with int values there.');
+      throw new TraceError(t.line, 'Line ' + t.line + ': expected a number or variable here, but found ' + found(t) + '.');
+    }
+
+    var ast = program();
+    return { ast: ast, loops: loops };
+  }
+
+  function show(e, val, parent) {
+    parent = parent || 0;
+    if (e.k === 'num') return String(e.v);
+    if (e.k === 'var') return val ? val(e.name) : e.name;
+    if (e.k === 'un') return e.op + show(e.a, val, 7);
+    var pr = PREC[e.op], s = show(e.l, val, pr) + ' ' + e.op + ' ' + show(e.r, val, pr + 1);
+    return pr < parent ? '(' + s + ')' : s;
+  }
+
+  function hasLoop(node) {
+    if (!node || typeof node !== 'object') return false;
+    if (node.type === 'for' || node.type === 'while') return true;
+    if (node.body && (Array.isArray(node.body) ? node.body.some(hasLoop) : hasLoop(node.body))) return true;
+    return hasLoop(node.then) || hasLoop(node.els);
+  }
+
+  function create(src) {
+    var parsed = parse(tokenize(src));
+    if (!hasLoop(parsed.ast)) throw new TraceError(null, 'No loop found. TraceStep traces loops, so paste code with a for or while loop.', 'noloop');
+    var vars = new Map(), order = [], out = { s: '' }, stats = {};
+    parsed.loops.forEach(function (L) { stats[L.id] = { info: L, entries: [] }; });
+
+    function snap() { var o = {}; vars.forEach(function (v, k) { o[k] = v; }); return o; }
+    function declare(name, value) { if (!vars.has(name) && order.indexOf(name) < 0) order.push(name); vars.set(name, value); }
+    function get(name, line) {
+      if (!vars.has(name)) throw new TraceError(line, 'Line ' + line + ' uses ' + name + ', but ' + name + ' was never declared. Add <code>int ' + name + ' = 0;</code> before it is used.', 'run');
+      var v = vars.get(name);
+      if (v === undefined) throw new TraceError(line, 'Line ' + line + ' uses ' + name + ' before it has a value. Give it a starting value, for example <code>int ' + name + ' = 0;</code>', 'run');
+      return v;
+    }
+    function ev(e) {
+      if (e.k === 'num') return e.v;
+      if (e.k === 'var') return get(e.name, e.line);
+      if (e.k === 'un') { var a = ev(e.a); return e.op === '-' ? (-a | 0) : e.op === '!' ? (a ? 0 : 1) : a; }
+      if (e.op === '&&') return (ev(e.l) && ev(e.r)) ? 1 : 0;
+      if (e.op === '||') return (ev(e.l) || ev(e.r)) ? 1 : 0;
+      var x = ev(e.l), y = ev(e.r);
+      switch (e.op) {
+        case '+': return (x + y) | 0;
+        case '-': return (x - y) | 0;
+        case '*': return Math.imul(x, y);
+        case '/': if (y === 0) throw divZero(e); return (x / y) | 0;
+        case '%': if (y === 0) throw divZero(e); return x % y;
+        case '<': return x < y ? 1 : 0;
+        case '<=': return x <= y ? 1 : 0;
+        case '>': return x > y ? 1 : 0;
+        case '>=': return x >= y ? 1 : 0;
+        case '==': return x === y ? 1 : 0;
+        case '!=': return x !== y ? 1 : 0;
+      }
+      return 0;
+    }
+    function divZero(e) { var r = show(e.r); return new TraceError(e.line, 'Line ' + e.line + ' divides by zero, because ' + r + ' is 0 at this point. Check the value of ' + r + ' before dividing.', 'run'); }
+    function valueText(e) { return show(e, function (n) { var v = vars.get(n); return v === undefined ? '?' : String(v); }); }
+
+    function* exec(s) {
+      switch (s.type) {
+        case 'block': for (var i = 0; i < s.body.length; i++) yield* exec(s.body[i]); return;
+        case 'empty': return;
+        case 'decl': s.items.forEach(function (it) { declare(it.name, it.init ? ev(it.init) : undefined); }); return;
+        case 'assign': {
+          get0(s.name, s.line);
+          var v = ev(s.e);
+          if (s.op === '=') { vars.set(s.name, v); return; }
+          var cur = get(s.name, s.line);
+          if ((s.op === '/=' || s.op === '%=') && v === 0) throw new TraceError(s.line, 'Line ' + s.line + ' divides ' + s.name + ' by zero. Check the value on the right before dividing.', 'run');
+          var r = s.op === '+=' ? cur + v : s.op === '-=' ? cur - v : s.op === '*=' ? Math.imul(cur, v) : s.op === '/=' ? cur / v : cur % v;
+          vars.set(s.name, r | 0); return;
+        }
+        case 'incdec': { var c = get(s.name, s.line); vars.set(s.name, (s.op === '++' ? c + 1 : c - 1) | 0); return; }
+        case 'cout': s.items.forEach(function (it) { out.s += it.k === 'str' ? it.v : String(ev(it.e)); }); return;
+        case 'if': if (ev(s.cond)) yield* exec(s.then); else if (s.els) yield* exec(s.els); return;
+        case 'break': throw BREAK;
+        case 'continue': throw CONTINUE;
+        case 'return': throw RETURN;
+        case 'for': case 'while': {
+          if (s.type === 'for' && s.init) yield* exec(s.init);
+          var st = stats[s.info.id], entry = { runs: 0 };
+          st.entries.push(entry);
+          while (true) {
+            var ok = s.cond ? !!ev(s.cond) : true;
+            yield { type: 'check', line: s.line, loopId: s.info.id, cond: s.info.cond, values: s.cond ? valueText(s.cond) : '', ok: ok, runs: entry.runs, nested: s.info.nested, vars: snap(), outLen: out.s.length };
+            if (!ok) break;
+            entry.runs++;
+            try { yield* exec(s.body); }
+            catch (x) { if (x === BREAK) break; if (x !== CONTINUE) throw x; }
+            if (s.type === 'for' && s.update) yield* exec(s.update);
+          }
+          return;
+        }
+      }
+    }
+    function get0(name, line) { if (!vars.has(name)) throw new TraceError(line, 'Line ' + line + ' uses ' + name + ', but ' + name + ' was never declared. Add <code>int ' + name + ' = 0;</code> before it is used.', 'run'); }
+
+    function* run() {
+      try { yield* exec(parsed.ast); }
+      catch (x) {
+        if (x === RETURN) return;
+        if (x === BREAK || x === CONTINUE) throw new TraceError(null, 'break or continue is used outside a loop. Move it inside the loop.', 'run');
+        throw x;
+      }
+    }
+
+    var gen = run(), trace = { steps: [], done: false, checks: 0, order: order, out: out, stats: stats, lines: src.split('\n') };
+    trace.pull = function (limit) {
+      while (!trace.done && trace.checks < limit) {
+        var r;
+        try { r = gen.next(); }
+        catch (x) {
+          if (x instanceof TraceError) { trace.steps.push({ type: 'error', line: x.line, msg: x.message, vars: snap(), outLen: out.s.length }); trace.done = true; break; }
+          throw x;
+        }
+        if (r.done) { trace.steps.push({ type: 'end', vars: snap(), outLen: out.s.length }); trace.done = true; break; }
+        trace.steps.push(r.value); trace.checks++;
+      }
+    };
+    return trace;
+  }
+
+  return { create: create, TraceError: TraceError };
+})();
+
+/* ===================== Interface ===================== */
+(function () {
+  var EXAMPLE = 'for (int i = 1; i <= 3; i++) {\n  for (int j = 0; j <= i; j++)\n    cout << "*";\n  cout << endl;\n}';
+  var LIMIT_STEP = 100;
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    code: $('code'), editor: $('editor'), gutter: $('gutter'), codeError: $('code-error'),
+    editView: $('edit-view'), traceView: $('trace-view'), codeView: $('code-view'),
+    back: $('back'), next: $('next'), runEnd: $('run-end'), runMore: $('run-more'), reset: $('reset'),
+    editCode: $('edit-code'), loadExample: $('load-example'),
+    stepLabel: $('step-label'), empty: $('empty'), tableBox: $('table-box'), thead: $('thead'), tbody: $('tbody'),
+    colsBtn: $('cols-btn'), colsPanel: $('cols-panel'), copyBtn: $('copy-btn'), output: $('output'),
+    strip: $('strip'), stripLabel: $('strip-label'), stripBody: $('strip-body'), stripAlert: $('strip-alert'),
+    helpBtn: $('help-btn'), helpPanel: $('help-panel'), helpClose: $('help-close'), live: $('live'),
+    themeBtn: $('theme-btn')
+  };
+  var S = { mode: 'edit', trace: null, pos: 0, limit: LIMIT_STEP, busy: false, errorLine: null };
+
+  function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function times(n) { return n === 1 ? 'time' : 'times'; }
+  function listJoin(a) { return a.length < 2 ? String(a[0]) : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function off(btn, yes) { btn.setAttribute('aria-disabled', yes ? 'true' : 'false'); }
+  function isOff(btn) { return btn.getAttribute('aria-disabled') === 'true' || btn.getAttribute('aria-busy') === 'true'; }
+  function say(text) { el.live.textContent = ''; setTimeout(function () { el.live.textContent = text; }, 30); }
+  function printedHtml(s) {
+    if (!s) return '';
+    return '<code>' + esc(s).replace(/\n/g, '<span class="nl" aria-hidden="true">⏎</span><span class="sr-only"> new line </span>') + '</code>';
+  }
+  var SYMBOL_NAMES = { '*': 'star', '#': 'hash', '+': 'plus', '-': 'minus', '=': 'equals', ' ': 'space', '.': 'dot', ',': 'comma', '|': 'bar', '_': 'underscore', '/': 'slash', '!': 'exclamation mark', '?': 'question mark', ':': 'colon', ';': 'semicolon', '\n': 'new line', '\t': 'tab', '@': 'at sign', '$': 'dollar', '%': 'percent', '&': 'and sign', '(': 'open bracket', ')': 'close bracket', '<': 'less than', '>': 'greater than' };
+  function spoken(s) {
+    var parts = [], i = 0;
+    while (i < s.length) {
+      var c = s[i], j = i;
+      if (/[A-Za-z0-9]/.test(c)) { while (j < s.length && /[A-Za-z0-9]/.test(s[j])) j++; parts.push(s.slice(i, j)); i = j; continue; }
+      while (j < s.length && s[j] === c) j++;
+      var n = j - i, name = SYMBOL_NAMES[c] || ('symbol ' + c);
+      parts.push(n === 1 ? name : n + ' ' + name + 's');
+      i = j;
+    }
+    return parts.join(', ');
+  }
+
+  /* Editor gutter */
+  function drawGutter() {
+    var n = el.code.value.split('\n').length, html = '';
+    for (var i = 1; i <= n; i++) html += '<div' + (i === S.errorLine ? ' class="err"' : '') + '>' + i + '</div>';
+    el.gutter.innerHTML = html;
+    el.gutter.scrollTop = el.code.scrollTop;
+  }
+
+  function showCodeError(msg, line) {
+    S.errorLine = line || null;
+    el.codeError.innerHTML = '<div class="alert alert-error"><span class="alert-icon" aria-hidden="true">!</span><div class="alert-body"><p>' + msg + '</p></div></div>';
+    el.code.setAttribute('aria-invalid', 'true');
+    el.code.setAttribute('aria-describedby', 'code-error code-hint');
+    el.editor.classList.add('invalid');
+    drawGutter();
+  }
+  function clearCodeError() {
+    S.errorLine = null;
+    el.codeError.innerHTML = '';
+    el.code.removeAttribute('aria-invalid');
+    el.code.setAttribute('aria-describedby', 'code-hint');
+    el.editor.classList.remove('invalid');
+    drawGutter();
+  }
+
+  /* Trace helpers */
+  function step(n) { return S.trace.steps[n - 1]; }
+  function printedAfter(n) {
+    var tr = S.trace, s = step(n), nx = tr.steps[n];
+    var end = nx ? nx.outLen : (tr.done ? s.outLen : tr.out.s.length);
+    return tr.out.s.slice(s.outLen, end);
+  }
+  function outputUpTo(n) {
+    var tr = S.trace, nx = tr.steps[n];
+    var end = nx ? nx.outLen : (tr.done ? step(n).outLen : tr.out.s.length);
+    return tr.out.s.slice(0, end);
+  }
+  function paused() { return S.trace && !S.trace.done && S.pos === S.trace.steps.length; }
+
+  function summaryItems() {
+    var list = [];
+    Object.keys(S.trace.stats).map(function (k) { return S.trace.stats[k]; })
+      .sort(function (a, b) { return a.info.line - b.info.line; })
+      .forEach(function (st) {
+        var c = '<code>' + esc(st.info.cond) + '</code>', runs = st.entries.map(function (e) { return e.runs; });
+        if (!runs.length) list.push('The loop on line ' + st.info.line + ' (' + c + ') was never reached.');
+        else if (runs.length === 1) list.push(runs[0] === 0
+          ? 'The loop on line ' + st.info.line + ' (' + c + ') never ran, because its check was FALSE the first time.'
+          : 'The loop on line ' + st.info.line + ' (' + c + ') ran ' + runs[0] + ' ' + times(runs[0]) + '.');
+        else list.push('The loop on line ' + st.info.line + ' (' + c + ') started ' + runs.length + ' times and ran ' + listJoin(runs) + ' times.');
+      });
+    return list;
+  }
+
+  function whyText(s) {
+    if (s.ok) return 'TRUE, so the loop on line ' + s.line + ' runs its body (pass ' + (s.runs + 1) + ').';
+    return 'FALSE, so the loop on line ' + s.line + ' stops. ' + (s.nested ? 'This time it ran ' : 'It ran ') + s.runs + ' ' + times(s.runs) + '.';
+  }
+
+  function announce() {
+    var n = S.pos, s = step(n), txt;
+    if (s.type === 'check') {
+      txt = 'Step ' + n + ', line ' + s.line + '. Check ' + s.cond + (s.values ? ', ' + s.values : '') + ': ' + whyText(s);
+      var pr = printedAfter(n);
+      if (pr) txt += ' Prints ' + spoken(pr) + '.';
+      else txt += ' Prints nothing.';
+      if (paused()) txt = 'Step ' + n + '.';
+    } else if (s.type === 'end') {
+      txt = 'Program finished after ' + S.trace.checks + ' checks. ' + summaryItems().join(' ').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      var all = outputUpTo(n), words = all ? spoken(all) : '';
+      txt += all ? ' Final output: ' + (words.length > 400 ? words.slice(0, 400) + ', and more. The full output is in the Program output box.' : words + '.') : ' The program printed nothing.';
+    } else { txt = 'Step ' + n + '.'; }
+    say(txt);
+  }
+
+  /* Rendering */
+  function renderCodeView(curLine, bad) {
+    var html = '', lines = S.trace.lines;
+    for (var i = 0; i < lines.length; i++) {
+      var cur = (i + 1) === curLine;
+      html += '<li' + (cur ? ' class="cur' + (bad ? ' bad' : '') + '"' : '') + '>' +
+        '<span class="mark" aria-hidden="true">' + (cur ? (bad ? '!' : '▶') : '') + '</span>' +
+        (cur ? '<span class="sr-only">' + (bad ? 'Error on this line, ' : 'Checking this line, ') + '</span>' : '') +
+        '<span class="ln">' + (i + 1) + '</span><span>' + esc(lines[i]) + '</span></li>';
+    }
+    el.codeView.innerHTML = html;
+  }
+
+  function renderTable() {
+    var tr = S.trace, vars = tr.order;
+    el.thead.innerHTML = ['Step', 'Line', 'Check', 'Result'].concat(vars).concat(['Then printed'])
+      .map(function (h) { return '<th scope="col">' + esc(h) + '</th>'; }).join('');
+    var rows = [];
+    for (var n = 1; n <= S.pos; n++) {
+      var s = step(n), cur = n === S.pos, cells = [];
+      cells.push((cur ? '<span class="sr-only">Current step, </span>' : '') + n);
+      if (s.type === 'check') {
+        cells.push(s.line);
+        cells.push('<code>' + esc(s.cond) + '</code>' + (s.values ? ' <span class="nl">(' + esc(s.values) + ')</span>' : ''));
+        cells.push(s.ok ? '<span class="res res-true">TRUE <span aria-hidden="true">✓</span></span>' : '<span class="res res-false">FALSE <span aria-hidden="true">✕</span></span>');
+      } else if (s.type === 'end') {
+        cells.push('–'); cells.push('Program finished'); cells.push('<span class="res res-end">Done <span aria-hidden="true">✓</span></span>');
+      } else {
+        cells.push(s.line || '–'); cells.push('Stopped by an error'); cells.push('<span class="res res-stop">Error <span aria-hidden="true">!</span></span>');
+      }
+      vars.forEach(function (v) { cells.push(v in s.vars ? (s.vars[v] === undefined ? '?' : s.vars[v]) : ''); });
+      cells.push(s.type === 'check' ? printedHtml(printedAfter(n)) : '');
+      rows.push('<tr' + (cur ? ' class="cur" aria-current="step"' : '') + '>' + cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>');
+    }
+    el.tbody.innerHTML = rows.join('');
+    var row = el.tbody.querySelector('tr.cur');
+    if (row) {
+      var box = el.tableBox, head = 40, top = row.offsetTop, bottom = top + row.offsetHeight;
+      if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = bottom - box.clientHeight + 4;
+      else if (top - head < box.scrollTop) box.scrollTop = Math.max(0, top - head);
+    }
+  }
+
+  function renderOutput(text) {
+    if (!text) { el.output.textContent = 'Nothing printed yet.'; el.output.classList.add('empty-out'); return; }
+    el.output.textContent = text; el.output.classList.remove('empty-out');
+    el.output.scrollTop = el.output.scrollHeight;
+  }
+
+  function setStrip(kind, label, html) {
+    el.strip.className = 'strip' + (kind === 'idle' ? ' idle' : '');
+    el.strip.hidden = false;
+    el.stripLabel.textContent = label;
+    el.stripBody.innerHTML = html;
+  }
+  function setAlert(kind, html) {
+    el.stripAlert.innerHTML = html ? '<div class="alert alert-' + kind + '"><span class="alert-icon" aria-hidden="true">' + (kind === 'success' ? '✓' : '!') + '</span><div class="alert-body">' + html + '</div></div>' : '';
+  }
+
+  function render() {
+    var tracing = S.mode === 'trace';
+    el.editView.hidden = tracing;
+    el.traceView.hidden = !tracing;
+    el.empty.hidden = tracing;
+    el.tableBox.hidden = !tracing;
+    el.runMore.hidden = true;
+    off(el.copyBtn, !tracing);
+
+    if (!tracing) {
+      off(el.back, true); off(el.next, false); off(el.runEnd, false); off(el.reset, true);
+      el.stepLabel.textContent = 'No steps yet';
+      el.thead.innerHTML = ''; el.tbody.innerHTML = ''; el.codeView.innerHTML = '';
+      renderOutput('');
+      setAlert(null, '');
+      return;
+    }
+
+    var tr = S.trace, n = S.pos, s = step(n), last = tr.steps.length, atEnd = n >= last;
+    off(el.back, n <= 1);
+    off(el.next, atEnd);
+    off(el.runEnd, atEnd);
+    off(el.reset, false);
+    el.stepLabel.textContent = (tr.done && atEnd) ? 'Step ' + n + ' of ' + last : 'Step ' + n;
+
+    renderCodeView(s.type === 'end' ? null : s.line, s.type === 'error');
+    renderTable();
+    renderOutput(outputUpTo(n));
+    setAlert(null, '');
+
+    if (s.type === 'check' && !paused()) {
+      setStrip('active', 'Check', '<span class="expr">' + esc(s.cond) + (s.values ? '  →  ' + esc(s.values) : '') + '  →  <b class="res ' + (s.ok ? 'res-true' : 'res-false') + '">' + (s.ok ? 'TRUE <span aria-hidden="true">✓</span>' : 'FALSE <span aria-hidden="true">✕</span>') + '</b></span><span class="why">' + whyText(s).replace(/^(TRUE|FALSE), so the/, 'The') + '</span>');
+    } else if (s.type === 'check' && paused()) {
+      el.runMore.hidden = false;
+      var names = s.cond.match(/[A-Za-z_]\w*/g) || [];
+      var uniq = names.filter(function (x, i) { return names.indexOf(x) === i; });
+      setStrip('active', 'Check', '<span class="expr">' + esc(s.cond) + (s.values ? '  →  ' + esc(s.values) : '') + '  →  <b class="res res-true">TRUE <span aria-hidden="true">✓</span></b></span>');
+      setAlert('warning', '<p><b class="tone-warning">Stopped after ' + tr.checks + ' checks.</b> The check <code>' + esc(s.cond) + '</code> on line ' + s.line + ' is still TRUE, so this loop may never stop.' + (uniq.length ? ' Check that ' + esc(listJoin(uniq)) + ' changes in a way that can make the check FALSE.' : '') + '</p><p>Edit the code, or press Run 100 more steps.</p>');
+    } else if (s.type === 'end') {
+      setStrip('plain', '', '');
+      el.strip.hidden = true;
+      setAlert('success', '<p><b class="tone-success">Program finished after ' + tr.checks + ' ' + (tr.checks === 1 ? 'check' : 'checks') + '.</b></p><ul>' + summaryItems().map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>');
+    } else {
+      setStrip('plain', '', '');
+      el.strip.hidden = true;
+      setAlert('error', '<p><b class="tone-error">Stopped by an error.</b> ' + s.msg + '</p><p>Press Edit code to fix it.</p>');
+    }
+    /* Keep the result message in view on small (laptop) screens */
+    if (el.stripAlert.innerHTML && el.stripAlert.getBoundingClientRect().bottom > window.innerHeight) el.stripAlert.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* Actions */
+  function begin(toEnd) {
+    if (S.busy) return;
+    S.busy = true;
+    el.next.setAttribute('aria-busy', 'true');
+    el.next.textContent = 'Checking your code…';
+    say('Checking your code.');
+    setTimeout(function () {
+      S.busy = false;
+      el.next.removeAttribute('aria-busy');
+      el.next.textContent = 'Next ▶';
+      clearCodeError();
+      var tr;
+      try { tr = TS.create(el.code.value); }
+      catch (e) {
+        if (e instanceof TS.TraceError) { failInEdit(e.message, e.line); return; }
+        failInEdit('Something went wrong while reading this code. Check it and try again.', null); return;
+      }
+      S.limit = LIMIT_STEP;
+      tr.pull(S.limit);
+      var first = tr.steps[0];
+      if (first && first.type === 'error') { failInEdit(first.msg, first.line); return; }
+      S.trace = tr; S.mode = 'trace';
+      S.pos = toEnd ? tr.steps.length : 1;
+      render(); announce();
+      if (isOff(document.activeElement)) el.editCode.focus();
+    }, 250);
+  }
+
+  function failInEdit(msg, line) {
+    if (!el.code.value.trim()) msg = 'There’s no code to trace yet. Paste one C++ loop into the box, or press Load example loop.';
+    S.mode = 'edit'; S.trace = null;
+    render();
+    showCodeError(msg, line);
+    setStrip('idle', 'Check', 'Fix the code above, then press Next ▶.');
+    el.code.focus();
+  }
+
+  function goTo(n) { S.pos = Math.max(1, Math.min(n, S.trace.steps.length)); render(); announce(); }
+
+  function toEdit(focusEl, message) {
+    var s = S.trace && step(S.pos);
+    S.mode = 'edit'; S.trace = null; S.pos = 0;
+    render();
+    clearCodeError();
+    if (s && s.type === 'error') showCodeError(s.msg, s.line);
+    setStrip('idle', 'Check', message || 'Press Next ▶ to run the first check of your loop.');
+    if (message) say(message);
+    if (focusEl) focusEl.focus();
+  }
+
+  el.next.addEventListener('click', function () {
+    if (isOff(el.next)) return;
+    if (S.mode === 'edit') { begin(false); return; }
+    goTo(S.pos + 1);
+  });
+  el.runEnd.addEventListener('click', function () {
+    if (isOff(el.runEnd)) return;
+    if (S.mode === 'edit') { begin(true); return; }
+    goTo(S.trace.steps.length);
+  });
+  el.runMore.addEventListener('click', function () {
+    S.limit += LIMIT_STEP;
+    S.trace.pull(S.limit);
+    goTo(S.trace.steps.length);
+    if (el.runMore.hidden) el.editCode.focus();
+  });
+  el.back.addEventListener('click', function () { if (isOff(el.back)) return; goTo(S.pos - 1); });
+  el.reset.addEventListener('click', function () { if (isOff(el.reset)) return; toEdit(el.next, 'Trace cleared. Press Next ▶ to start again.'); });
+  el.editCode.addEventListener('click', function () { toEdit(el.code, ''); });
+  el.loadExample.addEventListener('click', function () {
+    el.code.value = EXAMPLE;
+    clearCodeError();
+    setStrip('idle', 'Check', 'Example loop loaded. Press Next ▶ to start.');
+    say('Example loop loaded.');
+  });
+  el.code.addEventListener('input', function () { if (S.errorLine !== null || el.code.getAttribute('aria-invalid')) clearCodeError(); else drawGutter(); });
+  el.code.addEventListener('scroll', function () { el.gutter.scrollTop = el.code.scrollTop; });
+
+  el.helpBtn.addEventListener('click', function () {
+    var open = el.helpPanel.hidden;
+    el.helpPanel.hidden = !open;
+    el.helpBtn.setAttribute('aria-expanded', String(open));
+    el.helpBtn.textContent = open ? 'Close help' : 'Help';
+  });
+  el.helpClose.addEventListener('click', function () {
+    el.helpPanel.hidden = true;
+    el.helpBtn.setAttribute('aria-expanded', 'false');
+    el.helpBtn.textContent = 'Help';
+    el.helpBtn.focus();
+  });
+  el.colsBtn.addEventListener('click', function () {
+    var open = el.colsPanel.hidden;
+    el.colsPanel.hidden = !open;
+    el.colsBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  el.copyBtn.addEventListener('click', function () {
+    if (isOff(el.copyBtn)) return;
+    var tr = S.trace, head = ['Step', 'Line', 'Check', 'Result'].concat(tr.order).concat(['Then printed']), lines = [head.join('\t')];
+    for (var n = 1; n <= S.pos; n++) {
+      var s = step(n), row = [n];
+      if (s.type === 'check') row.push(s.line, s.cond + (s.values ? ' (' + s.values + ')' : ''), s.ok ? 'TRUE' : 'FALSE');
+      else if (s.type === 'end') row.push('-', 'Program finished', 'Done');
+      else row.push(s.line || '-', 'Stopped by an error', 'Error');
+      tr.order.forEach(function (v) { row.push(v in s.vars ? (s.vars[v] === undefined ? '?' : s.vars[v]) : ''); });
+      row.push(s.type === 'check' ? printedAfter(n).replace(/\n/g, '\\n') : '');
+      lines.push(row.join('\t'));
+    }
+    var done = function (msg) { el.copyBtn.textContent = msg; say(msg); setTimeout(function () { el.copyBtn.textContent = 'Copy table'; }, 2000); };
+    try { navigator.clipboard.writeText(lines.join('\n')).then(function () { done('Table copied'); }, function () { done('Couldn’t copy here'); }); }
+    catch (e) { done('Couldn’t copy here'); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'ArrowRight' && !isOff(el.next)) { e.preventDefault(); el.next.click(); }
+    else if (e.key === 'ArrowLeft' && !isOff(el.back)) { e.preventDefault(); el.back.click(); }
+    else if ((e.key === 'r' || e.key === 'R') && !isOff(el.reset)) { e.preventDefault(); el.reset.click(); }
+  });
+
+  /* Light and dark mode: follows the computer's setting until the user presses the button */
+  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function isDark() {
+    var t = document.documentElement.getAttribute('data-theme');
+    if (t === 'dark' || t === 'light') return t === 'dark';
+    return !!(media && media.matches);
+  }
+  function syncThemeBtn() { el.themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false'); }
+  var savedTheme = null;
+  try { savedTheme = localStorage.getItem('tracestep-theme'); } catch (e) {}
+  if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.setAttribute('data-theme', savedTheme);
+  syncThemeBtn();
+  if (media && media.addEventListener) media.addEventListener('change', syncThemeBtn);
+  el.themeBtn.addEventListener('click', function () {
+    var mode = isDark() ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', mode);
+    try { localStorage.setItem('tracestep-theme', mode); } catch (e) {}
+    syncThemeBtn();
+    say(mode === 'dark' ? 'Dark mode on.' : 'Dark mode off.');
+  });
+
+  el.code.value = EXAMPLE;
+  drawGutter();
+  render();
+})();
+</script>
+</body>
+</html>
